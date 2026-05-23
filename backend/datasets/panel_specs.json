@@ -1,0 +1,22 @@
+[
+  {
+    "id": "trina_vertex_s",
+    "marca": "Trina Solar",
+    "modelo": "Vertex S+",
+    "eficiencia_tipica": 23.5,
+    "vida_util_anios": 30,
+    "coeficiente_temperatura_pmax": -0.29,
+    "degradacion_primer_anio": 1.0,
+    "degradacion_anual": 0.4
+  },
+  {
+    "id": "longi_himo_6",
+    "marca": "LONGi Solar",
+    "modelo": "Hi-MO 6",
+    "eficiencia_tipica": 22.6,
+    "vida_util_anios": 25,
+    "coeficiente_temperatura_pmax": -0.29,
+    "degradacion_primer_anio": 1.5,
+    "degradacion_anual": 0.4
+  }
+]
