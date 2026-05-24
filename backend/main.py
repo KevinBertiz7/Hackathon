@@ -9,6 +9,7 @@ from routes.panel_routes import router as panel_router
 from routes.analysis_routes import router as analysis_router
 from routes.history_routes import router as history_router
 from routes.training_routes import router as training_router
+from routes.maintenance_routes import router as maintenance_router
 
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("processed", exist_ok=True)
@@ -40,6 +41,7 @@ app.include_router(panel_router)
 app.include_router(analysis_router)
 app.include_router(history_router)
 app.include_router(training_router)
+app.include_router(maintenance_router)
 
 
 @app.get("/")

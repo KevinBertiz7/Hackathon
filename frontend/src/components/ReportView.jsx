@@ -11,6 +11,9 @@ import {
   Flame,
   Wrench,
   ArrowUp,
+  Send,
+  ClipboardCheck,
+  Clock,
 } from "lucide-react";
 import {
   LineChart,
@@ -24,7 +27,7 @@ import {
   Bar,
   Label,
 } from "recharts";
-import { backendUrl } from "../services/api";
+import { backendUrl, createMaintenanceRequest } from "../services/api";
 
 function getImageUrl(path) {
   if (!path) return null;
@@ -73,6 +76,9 @@ function ReportView({ report }) {
   const [selectedPanelIndex, setSelectedPanelIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("analisis");
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [maintenanceStatus, setMaintenanceStatus] = useState(null);
+  const [maintenanceRequestId, setMaintenanceRequestId] = useState(null);
+  const [creatingRequest, setCreatingRequest] = useState(false);
 
   const selectedPanelRef = useRef(null);
 
@@ -80,6 +86,10 @@ function ReportView({ report }) {
     if (report) {
       setActiveTab("analisis");
       setSelectedPanelIndex(0);
+
+      const data = report.data ? report.data : report;
+      setMaintenanceStatus(data.maintenance_status || null);
+      setMaintenanceRequestId(data.maintenance_request_id || null);
     }
   }, [report]);
 
@@ -87,12 +97,14 @@ function ReportView({ report }) {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 400);
     };
+
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const handleSelectPanel = (index) => {
     setSelectedPanelIndex(index);
+
     setTimeout(() => {
       selectedPanelRef.current?.scrollIntoView({
         behavior: "smooth",
@@ -117,6 +129,13 @@ function ReportView({ report }) {
 
   const data = report.data ? report.data : report;
 
+  const analysisId =
+    report.analysis_id ||
+    data.analysis_id ||
+    data.id ||
+    data.document_id ||
+    null;
+
   const processedImage = getImageUrl(data.processed_image_path);
   const affectedPanels = data.affected_panels || [];
   const selectedAffectedPanel = affectedPanels[selectedPanelIndex];
@@ -140,6 +159,97 @@ function ReportView({ report }) {
     selectedAffectedPanel?.estimated_life?.nivel_riesgo ||
       data.estimated_life?.nivel_riesgo
   );
+
+  const recommendations =
+    selectedAffectedPanel?.recommendations?.recomendaciones ||
+    data.recommendations?.recomendaciones ||
+    [];
+
+  const buildMaintenanceTasks = () => {
+    return recommendations.map((item, index) => ({
+      id: index + 1,
+      title: item.componente || `Tarea ${index + 1}`,
+      description: item.decision || "Revisar componente afectado.",
+      se_repara: item.se_repara || "",
+      completed: false,
+      feedback: "",
+    }));
+  };
+
+  const handleCreateMaintenanceRequest = async () => {
+    if (!analysisId) {
+      alert(
+        "No se encontró el ID del análisis. Abre este reporte desde el historial o genera nuevamente el análisis."
+      );
+      return;
+    }
+
+    if (recommendations.length === 0) {
+      alert("No hay recomendaciones disponibles para generar la solicitud.");
+      return;
+    }
+
+    try {
+      setCreatingRequest(true);
+
+      const payload = {
+        analysis_id: analysisId,
+        analysis_data: {
+          ...data,
+          id: analysisId,
+        },
+        tasks: buildMaintenanceTasks(),
+      };
+
+      const response = await createMaintenanceRequest(payload);
+
+      if (!response.success) {
+        alert(response.message || "No se pudo generar la solicitud.");
+        return;
+      }
+
+      setMaintenanceStatus("pending");
+      setMaintenanceRequestId(response.request_id);
+
+      alert("Solicitud enviada correctamente al área de mantenimiento.");
+    } catch (error) {
+      console.error(error);
+      alert("Error generando la solicitud de mantenimiento.");
+    } finally {
+      setCreatingRequest(false);
+    }
+  };
+
+  const renderMaintenanceButton = () => {
+    if (maintenanceStatus === "reviewed") {
+      return (
+        <div className="bg-emerald-100 text-emerald-700 px-4 py-3 rounded-xl font-bold flex items-center gap-2">
+          <ClipboardCheck size={20} />
+          Mantenimiento realizado
+        </div>
+      );
+    }
+
+    if (maintenanceStatus === "pending") {
+      return (
+        <div className="bg-amber-100 text-amber-700 px-4 py-3 rounded-xl font-bold flex items-center gap-2">
+          <Clock size={20} />
+          Solicitud enviada a mantenimiento
+        </div>
+      );
+    }
+
+    return (
+      <button
+        onClick={handleCreateMaintenanceRequest}
+        disabled={creatingRequest}
+        className="bg-emerald-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-emerald-700 transition flex items-center gap-2 disabled:bg-gray-400"
+      >
+        <Send size={20} />
+        {creatingRequest ? "Generando solicitud..." : "Generar solicitud"}
+      </button>
+    );
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
@@ -212,19 +322,21 @@ function ReportView({ report }) {
         {activeTab === "analisis" && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-              <div className={`bg-slate-50 border border-slate-100 rounded-xl p-4 ${cardHover}`}>
+              <div
+                className={`bg-slate-50 border border-slate-100 rounded-xl p-4 ${cardHover}`}
+              >
                 <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1">
                   Panel
                 </p>
                 <p className="font-bold text-slate-800 text-sm leading-tight">
                   {data.panel?.marca || "Genérico"}
                 </p>
-                <p className="text-xs text-slate-400">
-                  {data.panel?.modelo}
-                </p>
+                <p className="text-xs text-slate-400">{data.panel?.modelo}</p>
               </div>
 
-              <div className={`bg-orange-50 border border-orange-100 rounded-xl p-4 ${cardHover}`}>
+              <div
+                className={`bg-orange-50 border border-orange-100 rounded-xl p-4 ${cardHover}`}
+              >
                 <p className="text-[10px] uppercase tracking-wider text-orange-600 font-bold mb-1">
                   Temp. Máxima
                 </p>
@@ -233,7 +345,9 @@ function ReportView({ report }) {
                 </p>
               </div>
 
-              <div className={`bg-blue-50 border border-blue-100 rounded-xl p-4 ${cardHover}`}>
+              <div
+                className={`bg-blue-50 border border-blue-100 rounded-xl p-4 ${cardHover}`}
+              >
                 <p className="text-[10px] uppercase tracking-wider text-blue-600 font-bold mb-1">
                   Hotpoints
                 </p>
@@ -242,7 +356,9 @@ function ReportView({ report }) {
                 </p>
               </div>
 
-              <div className={`bg-yellow-50 border border-yellow-100 rounded-xl p-4 ${cardHover}`}>
+              <div
+                className={`bg-yellow-50 border border-yellow-100 rounded-xl p-4 ${cardHover}`}
+              >
                 <p className="text-[10px] uppercase tracking-wider text-yellow-600 font-bold mb-1">
                   Posibles
                 </p>
@@ -251,7 +367,9 @@ function ReportView({ report }) {
                 </p>
               </div>
 
-              <div className={`${risk.bg} border ${risk.border} rounded-xl p-4 ${cardHover}`}>
+              <div
+                className={`${risk.bg} border ${risk.border} rounded-xl p-4 ${cardHover}`}
+              >
                 <p
                   className={`text-[10px] uppercase tracking-wider ${risk.label} font-bold mb-1`}
                 >
@@ -331,7 +449,8 @@ function ReportView({ report }) {
                     <div>
                       <p>Se detectaron {hotpointsCount} hotpoints.</p>
                       <p>
-                        Se detectaron {possibleHotpointsCount} posibles hotpoints.
+                        Se detectaron {possibleHotpointsCount} posibles
+                        hotpoints.
                       </p>
                     </div>
                   </div>
@@ -373,7 +492,9 @@ function ReportView({ report }) {
                     </div>
 
                     <div className="bg-white rounded-xl p-4">
-                      <p className="text-sm text-gray-500">Tipo de detección</p>
+                      <p className="text-sm text-gray-500">
+                        Tipo de detección
+                      </p>
                       <p className="font-bold text-gray-800">
                         {getPointTypeText(selectedAffectedPanel.classification)}
                       </p>
@@ -390,7 +511,9 @@ function ReportView({ report }) {
                     </div>
 
                     <div className="bg-white rounded-xl p-4">
-                      <p className="text-sm text-gray-500">Vida útil estimada</p>
+                      <p className="text-sm text-gray-500">
+                        Vida útil estimada
+                      </p>
                       <p className="font-bold text-gray-800 flex items-center gap-1">
                         <BatteryCharging size={18} />
                         {selectedAffectedPanel.estimated_life
@@ -408,7 +531,9 @@ function ReportView({ report }) {
                     </div>
 
                     <div className="bg-white rounded-xl p-4 md:col-span-2">
-                      <p className="text-sm text-gray-500">Pérdida de energía</p>
+                      <p className="text-sm text-gray-500">
+                        Pérdida de energía
+                      </p>
 
                       <p className="font-bold text-gray-800 flex items-center gap-1">
                         <Zap size={18} />
@@ -667,50 +792,74 @@ function ReportView({ report }) {
         )}
 
         {activeTab === "recom" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(selectedAffectedPanel?.recommendations?.recomendaciones ||
-              data.recommendations?.recomendaciones ||
-              []
-            ).map((item, index) => {
-              const seRepara = item.se_repara
-                ?.toString()
-                .toLowerCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "");
+          <div className="space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-5">
+              <div>
+                <h3 className="text-xl font-extrabold text-slate-800">
+                  Recomendaciones de mantenimiento
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Estas recomendaciones se convertirán en tareas para el área de
+                  mantenimiento.
+                </p>
+                {maintenanceRequestId && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    Solicitud: {maintenanceRequestId}
+                  </p>
+                )}
+              </div>
 
-              const esReparable = seRepara === "si" || seRepara === "sí";
+              {renderMaintenanceButton()}
+            </div>
 
-              return (
-                <div
-                  key={index}
-                  className={`border rounded-2xl p-5 transition-all ${
-                    esReparable
-                      ? "border-slate-200 bg-white"
-                      : "border-red-200 bg-red-50/20"
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <h4 className="font-extrabold text-slate-800">
-                      {item.componente}
-                    </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recommendations.length > 0 ? (
+                recommendations.map((item, index) => {
+                  const seRepara = item.se_repara
+                    ?.toString()
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "");
 
-                    <span
-                      className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
+                  const esReparable = seRepara === "si" || seRepara === "sí";
+
+                  return (
+                    <div
+                      key={index}
+                      className={`border rounded-2xl p-5 transition-all ${
                         esReparable
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-red-100 text-red-700"
+                          ? "border-slate-200 bg-white"
+                          : "border-red-200 bg-red-50/20"
                       }`}
                     >
-                      {esReparable ? "Reparar" : "Reemplazo"}
-                    </span>
-                  </div>
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="font-extrabold text-slate-800">
+                          {item.componente}
+                        </h4>
 
-                  <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                    {item.decision}
-                  </p>
+                        <span
+                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
+                            esReparable
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {esReparable ? "Reparar" : "Reemplazo"}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                        {item.decision}
+                      </p>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="md:col-span-2 border rounded-2xl p-6 text-center text-slate-500">
+                  No hay recomendaciones disponibles para este análisis.
                 </div>
-              );
-            })}
+              )}
+            </div>
           </div>
         )}
       </div>

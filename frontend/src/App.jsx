@@ -1,8 +1,21 @@
 import { useEffect, useState } from "react";
-import { Sun, Flame, CheckCircle2, AlertCircle, X, Info } from "lucide-react";
+import {
+  Sun,
+  Flame,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  Info,
+  Wrench,
+} from "lucide-react";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+
 import ConfigPanel from "./components/ConfigPanel";
 import ReportView from "./components/ReportView";
 import HistoryPanel from "./components/HistoryPanel";
+import TimelineHotpoints from "./components/TimelineHotpoints";
+import MaintenanceDashboard from "./components/MaintenanceDashboard";
+
 import {
   getPanels,
   analyzeImage,
@@ -51,6 +64,7 @@ function Toast({ toast, onClose }) {
     >
       <Icon className={`w-5 h-5 ${c.iconColor} flex-shrink-0 mt-0.5`} />
       <p className="flex-1 text-sm font-medium leading-snug">{toast.message}</p>
+
       <button
         onClick={onClose}
         className={`${c.iconColor} hover:opacity-70 transition`}
@@ -62,6 +76,9 @@ function Toast({ toast, onClose }) {
 }
 
 function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [panels, setPanels] = useState([]);
   const [selectedPanel, setSelectedPanel] = useState("");
   const [selectedImage, setSelectedImage] = useState(null);
@@ -70,9 +87,13 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
 
+  const isMaintenanceRoute = location.pathname === "/mantenimientos";
+
   const showToast = (message, type = "info", duration = 3500) => {
     const id = Date.now() + Math.random();
+
     setToasts((prev) => [...prev, { id, message, type }]);
+
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, duration);
@@ -101,6 +122,19 @@ function App() {
     }
   };
 
+  const scrollToReport = () => {
+    setTimeout(() => {
+      const reportSection = document.getElementById("report-section");
+
+      if (reportSection) {
+        reportSection.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+    }, 250);
+  };
+
   const handleAnalyze = async () => {
     if (!selectedPanel) {
       showToast("Selecciona un tipo de panel.", "warning");
@@ -126,6 +160,8 @@ function App() {
       await loadHistory();
 
       showToast("Reporte generado correctamente.", "success");
+      navigate("/");
+      scrollToReport();
     } catch (error) {
       console.error(error);
       showToast("Error conectando con el backend.", "error");
@@ -137,11 +173,26 @@ function App() {
   const handleSelectHistory = async (id) => {
     try {
       const data = await getAnalysisById(id);
+
       setReport(data);
+      navigate("/");
+
+      showToast("Análisis cargado desde el historial.", "success");
+      scrollToReport();
     } catch (error) {
       console.error(error);
       showToast("No se pudo cargar el análisis seleccionado.", "error");
     }
+  };
+
+  const handleMaintenanceCreated = async () => {
+    await loadHistory();
+    showToast("Solicitud enviada al área de mantenimiento.", "success");
+  };
+
+  const handleMaintenanceReviewed = async () => {
+    await loadHistory();
+    showToast("Solicitud marcada como revisada.", "success");
   };
 
   useEffect(() => {
@@ -156,6 +207,7 @@ function App() {
           from { transform: translateX(120%); opacity: 0; }
           to   { transform: translateX(0); opacity: 1; }
         }
+
         .animate-slide-in {
           animation: slide-in 0.3s ease-out;
         }
@@ -177,7 +229,8 @@ function App() {
         <div
           className="absolute inset-0 opacity-10 pointer-events-none"
           style={{
-            backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
+            backgroundImage:
+              "radial-gradient(circle, white 1px, transparent 1px)",
             backgroundSize: "24px 24px",
           }}
         ></div>
@@ -185,6 +238,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 relative z-10 flex flex-col items-center text-center">
           <div className="relative mb-3">
             <div className="absolute inset-0 bg-yellow-300 blur-2xl opacity-60 rounded-full"></div>
+
             <Sun
               className="w-16 h-16 text-yellow-300 relative animate-spin"
               strokeWidth={2.5}
@@ -213,80 +267,93 @@ function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <ConfigPanel
-            panels={panels}
-            selectedPanel={selectedPanel}
-            setSelectedPanel={setSelectedPanel}
-            selectedImage={selectedImage}
-            setSelectedImage={setSelectedImage}
-            onAnalyze={handleAnalyze}
-            loading={loading}
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                  <ConfigPanel
+                    panels={panels}
+                    selectedPanel={selectedPanel}
+                    setSelectedPanel={setSelectedPanel}
+                    selectedImage={selectedImage}
+                    setSelectedImage={setSelectedImage}
+                    onAnalyze={handleAnalyze}
+                    loading={loading}
+                  />
+
+                  <HistoryPanel
+                    history={history}
+                    onSelectHistory={handleSelectHistory}
+                  />
+
+                  <div className="bg-white rounded-2xl shadow-md p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-2xl font-bold text-gray-800">
+                        Semáforo
+                      </h2>
+
+                      <div className="flex gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="bg-red-50 border-l-4 border-red-500 rounded-xl p-4">
+                        <p className="font-bold text-red-700">
+                          Crítico — Reemplazo
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Daño irreversible, requiere cambio
+                        </p>
+                      </div>
+
+                      <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-xl p-4">
+                        <p className="font-bold text-yellow-700">
+                          Atención — Reparar
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Falla recuperable con intervención
+                        </p>
+                      </div>
+
+                      <div className="bg-green-50 border-l-4 border-green-500 rounded-xl p-4">
+                        <p className="font-bold text-green-700">
+                          Óptimo — Mantenimiento
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Sin acción urgente requerida
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <TimelineHotpoints history={history} />
+
+                <div id="report-section">
+                  <ReportView
+                    report={report}
+                    onMaintenanceCreated={handleMaintenanceCreated}
+                  />
+                </div>
+              </>
+            }
           />
 
-          <HistoryPanel
-            history={history}
-            onSelectHistory={handleSelectHistory}
+          <Route
+            path="/mantenimientos"
+            element={
+              <MaintenanceDashboard
+                onBack={() => navigate("/")}
+                onReviewed={handleMaintenanceReviewed}
+              />
+            }
           />
-
-          <div className="bg-white rounded-2xl shadow-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-800">Semáforo</h2>
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="bg-red-50 border-l-4 border-red-500 rounded-xl p-4 flex items-center gap-3">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-red-500 blur-md opacity-50 rounded-full"></div>
-                  <div className="w-4 h-4 rounded-full bg-red-500 relative animate-pulse"></div>
-                </div>
-                <div className="flex-1">
-                  <p className="font-bold text-red-700">Crítico — Reemplazo</p>
-                  <p className="text-xs text-gray-600">
-                    Daño irreversible, requiere cambio
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-xl p-4 flex items-center gap-3">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-yellow-400 blur-md opacity-50 rounded-full"></div>
-                  <div className="w-4 h-4 rounded-full bg-yellow-400 relative"></div>
-                </div>
-                <div className="flex-1">
-                  <p className="font-bold text-yellow-700">
-                    Atención — Reparar
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    Falla recuperable con intervención
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-green-50 border-l-4 border-green-500 rounded-xl p-4 flex items-center gap-3">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-green-500 blur-md opacity-50 rounded-full"></div>
-                  <div className="w-4 h-4 rounded-full bg-green-500 relative"></div>
-                </div>
-                <div className="flex-1">
-                  <p className="font-bold text-green-700">
-                    Óptimo — Mantenimiento
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    Sin acción urgente requerida
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <ReportView report={report} />
+        </Routes>
       </main>
     </div>
   );
