@@ -8,6 +8,9 @@ import {
   Save,
   ShieldCheck,
   FileText,
+  X,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import {
   getMaintenanceRequests,
@@ -32,6 +35,120 @@ function formatDate(dateString) {
   });
 }
 
+function Toast({ toast, onClose }) {
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => onClose(), 3500);
+    return () => clearTimeout(timer);
+  }, [toast, onClose]);
+
+  if (!toast) return null;
+
+  const variants = {
+    success: {
+      iconBg: "bg-emerald-100",
+      iconColor: "text-emerald-600",
+      accent: "border-l-emerald-500",
+      Icon: CheckCircle2,
+    },
+    error: {
+      iconBg: "bg-red-100",
+      iconColor: "text-red-600",
+      accent: "border-l-red-500",
+      Icon: AlertTriangle,
+    },
+    info: {
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+      accent: "border-l-blue-500",
+      Icon: Info,
+    },
+  };
+
+  const v = variants[toast.type] || variants.info;
+  const Icon = v.Icon;
+
+  return (
+    <div className="fixed top-6 right-6 z-[100] animate-[slideIn_0.3s_ease-out]">
+      <div
+        className={`bg-white border border-slate-200 ${v.accent} border-l-4 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 min-w-[300px] max-w-md`}
+      >
+        <div className={`shrink-0 w-9 h-9 rounded-full ${v.iconBg} flex items-center justify-center`}>
+          <Icon size={20} className={v.iconColor} strokeWidth={2.5} />
+        </div>
+        <p className="flex-1 font-semibold text-sm text-slate-700">{toast.message}</p>
+        <button
+          onClick={onClose}
+          className="shrink-0 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-1 transition"
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(120%); opacity: 0; }
+          to   { transform: translateX(0);     opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function ConfirmModal({ open, title, message, onCancel, onConfirm, loading }) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]">
+      <div
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+        onClick={!loading ? onCancel : undefined}
+      />
+
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-[popIn_0.25s_ease-out] border border-slate-200">
+        <div className="flex items-start gap-4 mb-2">
+          <div className="shrink-0 w-11 h-11 rounded-full bg-emerald-100 flex items-center justify-center">
+            <ShieldCheck size={22} className="text-emerald-600" strokeWidth={2.5} />
+          </div>
+
+          <div className="flex-1 pt-1">
+            <h3 className="text-lg font-extrabold text-slate-800">{title}</h3>
+            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+              {message}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-sm transition disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold text-sm transition disabled:opacity-50"
+          >
+            {loading ? "Procesando..." : "Sí, confirmar"}
+          </button>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popIn {
+          from { transform: scale(0.92); opacity: 0; }
+          to   { transform: scale(1);     opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function MaintenanceDashboard({ onBack }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [reviewedRequests, setReviewedRequests] = useState([]);
@@ -40,6 +157,11 @@ function MaintenanceDashboard({ onBack }) {
   const [tasks, setTasks] = useState([]);
   const [finalComment, setFinalComment] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [toast, setToast] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const showToast = (type, message) => setToast({ type, message });
 
   const loadRequests = async () => {
     try {
@@ -50,6 +172,7 @@ function MaintenanceDashboard({ onBack }) {
       setReviewedRequests(Array.isArray(reviewed) ? reviewed : []);
     } catch (error) {
       console.error("Error cargando solicitudes:", error);
+      showToast("error", "No se pudieron cargar las solicitudes.");
     }
   };
 
@@ -84,23 +207,22 @@ function MaintenanceDashboard({ onBack }) {
       });
 
       await loadRequests();
-      alert("Tareas guardadas correctamente.");
+      showToast("success", "Tareas guardadas correctamente.");
     } catch (error) {
       console.error(error);
-      alert("No se pudieron guardar las tareas.");
+      showToast("error", "No se pudieron guardar las tareas.");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleReviewClick = () => {
+    if (!selectedRequest) return;
+    setConfirmOpen(true);
+  };
+
   const reviewRequest = async () => {
     if (!selectedRequest) return;
-
-    const confirmReview = confirm(
-      "¿Seguro que deseas marcar esta solicitud como revisada?"
-    );
-
-    if (!confirmReview) return;
 
     try {
       setLoading(true);
@@ -108,16 +230,17 @@ function MaintenanceDashboard({ onBack }) {
       await updateMaintenanceTasks(selectedRequest.id, tasks);
       await markMaintenanceAsReviewed(selectedRequest.id, finalComment);
 
+      setConfirmOpen(false);
       setSelectedRequest(null);
       setTasks([]);
       setFinalComment("");
 
       await loadRequests();
 
-      alert("Solicitud marcada como revisada.");
+      showToast("success", "Solicitud marcada como revisada.");
     } catch (error) {
       console.error(error);
-      alert("No se pudo marcar como revisada.");
+      showToast("error", "No se pudo marcar como revisada.");
     } finally {
       setLoading(false);
     }
@@ -135,6 +258,17 @@ function MaintenanceDashboard({ onBack }) {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      <Toast toast={toast} onClose={() => setToast(null)} />
+
+      <ConfirmModal
+        open={confirmOpen}
+        loading={loading}
+        title="Confirmar revisión"
+        message="¿Seguro que deseas marcar esta solicitud como revisada? Esta acción no se puede deshacer."
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={reviewRequest}
+      />
+
       <header className="bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-700 text-white py-8 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -419,16 +553,16 @@ function MaintenanceDashboard({ onBack }) {
                       <button
                         onClick={saveTasks}
                         disabled={loading}
-                        className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 flex items-center justify-center gap-2"
+                        className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         <Save size={20} />
                         Guardar avances
                       </button>
 
                       <button
-                        onClick={reviewRequest}
+                        onClick={handleReviewClick}
                         disabled={loading}
-                        className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 flex items-center justify-center gap-2"
+                        className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         <ShieldCheck size={20} />
                         Marcar como revisada

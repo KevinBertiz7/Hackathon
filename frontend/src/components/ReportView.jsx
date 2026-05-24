@@ -14,6 +14,9 @@ import {
   Send,
   ClipboardCheck,
   Clock,
+  X,
+  Info,
+  CheckCircle2,
 } from "lucide-react";
 import {
   LineChart,
@@ -72,6 +75,66 @@ function getRiskStyle(nivel) {
 const cardHover =
   "transition-all duration-200 hover:scale-105 hover:shadow-lg hover:-translate-y-0.5 cursor-default";
 
+function Toast({ toast, onClose }) {
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => onClose(), 3500);
+    return () => clearTimeout(timer);
+  }, [toast, onClose]);
+
+  if (!toast) return null;
+
+  const variants = {
+    success: {
+      iconBg: "bg-emerald-100",
+      iconColor: "text-emerald-600",
+      accent: "border-l-emerald-500",
+      Icon: CheckCircle2,
+    },
+    error: {
+      iconBg: "bg-red-100",
+      iconColor: "text-red-600",
+      accent: "border-l-red-500",
+      Icon: AlertTriangle,
+    },
+    info: {
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+      accent: "border-l-blue-500",
+      Icon: Info,
+    },
+  };
+
+  const v = variants[toast.type] || variants.info;
+  const Icon = v.Icon;
+
+  return (
+    <div className="fixed top-6 right-6 z-[100] animate-[slideIn_0.3s_ease-out]">
+      <div
+        className={`bg-white border border-slate-200 ${v.accent} border-l-4 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 min-w-[300px] max-w-md`}
+      >
+        <div className={`shrink-0 w-9 h-9 rounded-full ${v.iconBg} flex items-center justify-center`}>
+          <Icon size={20} className={v.iconColor} strokeWidth={2.5} />
+        </div>
+        <p className="flex-1 font-semibold text-sm text-slate-700">{toast.message}</p>
+        <button
+          onClick={onClose}
+          className="shrink-0 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-1 transition"
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(120%); opacity: 0; }
+          to   { transform: translateX(0);     opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function ReportView({ report }) {
   const [selectedPanelIndex, setSelectedPanelIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("analisis");
@@ -79,6 +142,9 @@ function ReportView({ report }) {
   const [maintenanceStatus, setMaintenanceStatus] = useState(null);
   const [maintenanceRequestId, setMaintenanceRequestId] = useState(null);
   const [creatingRequest, setCreatingRequest] = useState(false);
+
+  const [toast, setToast] = useState(null);
+  const showToast = (type, message) => setToast({ type, message });
 
   const selectedPanelRef = useRef(null);
 
@@ -178,14 +244,18 @@ function ReportView({ report }) {
 
   const handleCreateMaintenanceRequest = async () => {
     if (!analysisId) {
-      alert(
+      showToast(
+        "error",
         "No se encontró el ID del análisis. Abre este reporte desde el historial o genera nuevamente el análisis."
       );
       return;
     }
 
     if (recommendations.length === 0) {
-      alert("No hay recomendaciones disponibles para generar la solicitud.");
+      showToast(
+        "info",
+        "No hay recomendaciones disponibles para generar la solicitud."
+      );
       return;
     }
 
@@ -204,17 +274,17 @@ function ReportView({ report }) {
       const response = await createMaintenanceRequest(payload);
 
       if (!response.success) {
-        alert(response.message || "No se pudo generar la solicitud.");
+        showToast("error", response.message || "No se pudo generar la solicitud.");
         return;
       }
 
       setMaintenanceStatus("pending");
       setMaintenanceRequestId(response.request_id);
 
-      alert("Solicitud enviada correctamente al área de mantenimiento.");
+      showToast("success", "Solicitud enviada correctamente al área de mantenimiento.");
     } catch (error) {
       console.error(error);
-      alert("Error generando la solicitud de mantenimiento.");
+      showToast("error", "Error generando la solicitud de mantenimiento.");
     } finally {
       setCreatingRequest(false);
     }
@@ -253,6 +323,8 @@ function ReportView({ report }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+      <Toast toast={toast} onClose={() => setToast(null)} />
+
       {showScrollTop && (
         <button
           onClick={scrollToTop}
