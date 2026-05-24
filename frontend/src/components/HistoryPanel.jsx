@@ -30,11 +30,15 @@ function HistoryPanel({ history, onSelectHistory }) {
               </div>
 
               <p className="text-sm text-gray-600 mt-1">
-                Temperatura: {item.hotpoint_temperature} °C
+                Paneles afectados: {item.affected_panels?.length || 0}
               </p>
 
               <p className="text-sm text-gray-600">
-                Riesgo: {item.estimated_life?.nivel_riesgo}
+                Hotpoints: {item.possible_hotpoints?.length || 0}
+              </p>
+
+              <p className="text-sm text-gray-600">
+                Temperatura máxima: {item.hotpoint_temperature} °C
               </p>
 
               <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">

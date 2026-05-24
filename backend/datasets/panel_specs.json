@@ -6,6 +6,8 @@
     "eficiencia_tipica": 23.5,
     "vida_util_anios": 30,
     "coeficiente_temperatura_pmax": -0.29,
+    "temperatura_operacion_optima": 45,
+    "potencia_w": 450,
     "degradacion_primer_anio": 1.0,
     "degradacion_anual": 0.4
   },
@@ -16,6 +18,8 @@
     "eficiencia_tipica": 22.6,
     "vida_util_anios": 25,
     "coeficiente_temperatura_pmax": -0.29,
+    "temperatura_operacion_optima": 45,
+    "potencia_w": 550,
     "degradacion_primer_anio": 1.5,
     "degradacion_anual": 0.4
   }
