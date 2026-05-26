@@ -1,3 +1,7 @@
+// ReportView.jsx
+// Reemplaza tu archivo completo por este.
+// Incluye animaciones: interactive-card, interactive-soft, image-zoom, glow-active.
+
 import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -37,6 +41,13 @@ function getImageUrl(path) {
   return `${backendUrl}/${path.replace(/\\/g, "/")}`;
 }
 
+function handleMouseGlow(e) {
+  const card = e.currentTarget;
+  const rect = card.getBoundingClientRect();
+  card.style.setProperty("--x", `${e.clientX - rect.left}px`);
+  card.style.setProperty("--y", `${e.clientY - rect.top}px`);
+}
+
 function getPointTypeText(classification) {
   return classification === "hotpoint"
     ? "Hotpoint detectado"
@@ -71,9 +82,6 @@ function getRiskStyle(nivel) {
     label: "text-emerald-600",
   };
 }
-
-const cardHover =
-  "transition-all duration-200 hover:scale-105 hover:shadow-lg hover:-translate-y-0.5 cursor-default";
 
 function Toast({ toast, onClose }) {
   useEffect(() => {
@@ -113,10 +121,14 @@ function Toast({ toast, onClose }) {
       <div
         className={`bg-white border border-slate-200 ${v.accent} border-l-4 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 min-w-[300px] max-w-md`}
       >
-        <div className={`shrink-0 w-9 h-9 rounded-full ${v.iconBg} flex items-center justify-center`}>
+        <div
+          className={`shrink-0 w-9 h-9 rounded-full ${v.iconBg} flex items-center justify-center`}
+        >
           <Icon size={20} className={v.iconColor} strokeWidth={2.5} />
         </div>
-        <p className="flex-1 font-semibold text-sm text-slate-700">{toast.message}</p>
+        <p className="flex-1 font-semibold text-sm text-slate-700">
+          {toast.message}
+        </p>
         <button
           onClick={onClose}
           className="shrink-0 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-1 transition"
@@ -142,11 +154,11 @@ function ReportView({ report }) {
   const [maintenanceStatus, setMaintenanceStatus] = useState(null);
   const [maintenanceRequestId, setMaintenanceRequestId] = useState(null);
   const [creatingRequest, setCreatingRequest] = useState(false);
-
   const [toast, setToast] = useState(null);
-  const showToast = (type, message) => setToast({ type, message });
 
   const selectedPanelRef = useRef(null);
+
+  const showToast = (type, message) => setToast({ type, message });
 
   useEffect(() => {
     if (report) {
@@ -185,7 +197,10 @@ function ReportView({ report }) {
 
   if (!report) {
     return (
-      <div className="bg-white rounded-2xl shadow-md p-6 h-full flex items-center justify-center">
+      <div
+        onMouseMove={handleMouseGlow}
+        className="bg-white rounded-2xl shadow-md p-6 h-full flex items-center justify-center interactive-card border border-slate-200"
+      >
         <p className="text-gray-500 text-center">
           Aquí aparecerá el reporte cuando generes un análisis.
         </p>
@@ -274,14 +289,20 @@ function ReportView({ report }) {
       const response = await createMaintenanceRequest(payload);
 
       if (!response.success) {
-        showToast("error", response.message || "No se pudo generar la solicitud.");
+        showToast(
+          "error",
+          response.message || "No se pudo generar la solicitud."
+        );
         return;
       }
 
       setMaintenanceStatus("pending");
       setMaintenanceRequestId(response.request_id);
 
-      showToast("success", "Solicitud enviada correctamente al área de mantenimiento.");
+      showToast(
+        "success",
+        "Solicitud enviada correctamente al área de mantenimiento."
+      );
     } catch (error) {
       console.error(error);
       showToast("error", "Error generando la solicitud de mantenimiento.");
@@ -293,7 +314,7 @@ function ReportView({ report }) {
   const renderMaintenanceButton = () => {
     if (maintenanceStatus === "reviewed") {
       return (
-        <div className="bg-emerald-100 text-emerald-700 px-4 py-3 rounded-xl font-bold flex items-center gap-2">
+        <div className="bg-emerald-100 text-emerald-700 px-4 py-3 rounded-xl font-bold flex items-center gap-2 glow-active">
           <ClipboardCheck size={20} />
           Mantenimiento realizado
         </div>
@@ -313,7 +334,7 @@ function ReportView({ report }) {
       <button
         onClick={handleCreateMaintenanceRequest}
         disabled={creatingRequest}
-        className="bg-emerald-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-emerald-700 transition flex items-center gap-2 disabled:bg-gray-400"
+        className="bg-emerald-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-emerald-700 transition flex items-center gap-2 disabled:bg-gray-400 hover:-translate-y-1 hover:shadow-xl active:scale-95"
       >
         <Send size={20} />
         {creatingRequest ? "Generando solicitud..." : "Generar solicitud"}
@@ -322,7 +343,10 @@ function ReportView({ report }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+    <div
+      onMouseMove={handleMouseGlow}
+      className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm interactive-card"
+    >
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       {showScrollTop && (
@@ -348,7 +372,7 @@ function ReportView({ report }) {
       <div className="bg-slate-50 border-b border-slate-200 px-6 pt-5">
         <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <div className="bg-emerald-600 p-2 rounded-xl shadow-lg shadow-emerald-100">
+            <div className="bg-emerald-600 p-2 rounded-xl shadow-lg shadow-emerald-100 float-soft">
               <FileSearch className="w-5 h-5 text-white" />
             </div>
 
@@ -394,53 +418,49 @@ function ReportView({ report }) {
         {activeTab === "analisis" && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-              <div
-                className={`bg-slate-50 border border-slate-100 rounded-xl p-4 ${cardHover}`}
-              >
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1">
-                  Panel
-                </p>
-                <p className="font-bold text-slate-800 text-sm leading-tight">
-                  {data.panel?.marca || "Genérico"}
-                </p>
-                <p className="text-xs text-slate-400">{data.panel?.modelo}</p>
-              </div>
+              {[
+                {
+                  label: "Panel",
+                  value: data.panel?.marca || "Genérico",
+                  sub: data.panel?.modelo,
+                  className: "bg-slate-50 border-slate-100 text-slate-800",
+                },
+                {
+                  label: "Temp. Máxima",
+                  value: `${data.hotpoint_temperature} °C`,
+                  className: "bg-orange-50 border-orange-100 text-orange-700",
+                },
+                {
+                  label: "Hotpoints",
+                  value: hotpointsCount,
+                  className: "bg-blue-50 border-blue-100 text-blue-700",
+                },
+                {
+                  label: "Posibles",
+                  value: possibleHotpointsCount,
+                  className: "bg-yellow-50 border-yellow-100 text-yellow-700",
+                },
+              ].map((card, index) => (
+                <div
+                  key={index}
+                  onMouseMove={handleMouseGlow}
+                  className={`rounded-xl p-4 border interactive-card ${card.className}`}
+                >
+                  <p className="text-[10px] uppercase tracking-wider font-bold mb-1 opacity-70">
+                    {card.label}
+                  </p>
+                  <p className="font-bold text-lg leading-none">
+                    {card.value}
+                  </p>
+                  {card.sub && (
+                    <p className="text-xs text-slate-400 mt-1">{card.sub}</p>
+                  )}
+                </div>
+              ))}
 
               <div
-                className={`bg-orange-50 border border-orange-100 rounded-xl p-4 ${cardHover}`}
-              >
-                <p className="text-[10px] uppercase tracking-wider text-orange-600 font-bold mb-1">
-                  Temp. Máxima
-                </p>
-                <p className="font-bold text-orange-700 text-lg leading-none">
-                  {data.hotpoint_temperature} °C
-                </p>
-              </div>
-
-              <div
-                className={`bg-blue-50 border border-blue-100 rounded-xl p-4 ${cardHover}`}
-              >
-                <p className="text-[10px] uppercase tracking-wider text-blue-600 font-bold mb-1">
-                  Hotpoints
-                </p>
-                <p className="font-bold text-blue-700 text-lg leading-none">
-                  {hotpointsCount}
-                </p>
-              </div>
-
-              <div
-                className={`bg-yellow-50 border border-yellow-100 rounded-xl p-4 ${cardHover}`}
-              >
-                <p className="text-[10px] uppercase tracking-wider text-yellow-600 font-bold mb-1">
-                  Posibles
-                </p>
-                <p className="font-bold text-yellow-700 text-lg leading-none">
-                  {possibleHotpointsCount}
-                </p>
-              </div>
-
-              <div
-                className={`${risk.bg} border ${risk.border} rounded-xl p-4 ${cardHover}`}
+                onMouseMove={handleMouseGlow}
+                className={`${risk.bg} border ${risk.border} rounded-xl p-4 interactive-card`}
               >
                 <p
                   className={`text-[10px] uppercase tracking-wider ${risk.label} font-bold mb-1`}
@@ -461,12 +481,12 @@ function ReportView({ report }) {
                   Imagen procesada con paneles afectados
                 </h3>
 
-                <div className="bg-slate-900 rounded-xl p-2 border border-slate-200 min-h-[300px] flex items-center justify-center">
+                <div className="bg-slate-900 rounded-xl p-2 border border-slate-200 min-h-[300px] flex items-center justify-center overflow-hidden">
                   {processedImage && (
                     <img
                       src={processedImage}
                       alt="Imagen procesada"
-                      className="w-full max-h-[560px] object-contain rounded-lg shadow-2xl"
+                      className="w-full max-h-[560px] object-contain rounded-lg shadow-2xl image-zoom"
                     />
                   )}
                 </div>
@@ -483,16 +503,17 @@ function ReportView({ report }) {
                       <button
                         key={panel.id || index}
                         onClick={() => handleSelectPanel(index)}
-                        className={`w-full border rounded-xl p-2 text-left transition hover:shadow-md ${
+                        onMouseMove={handleMouseGlow}
+                        className={`w-full border rounded-xl p-2 text-left transition interactive-card ${
                           selectedPanelIndex === index
-                            ? "border-blue-600 bg-blue-50"
+                            ? "border-blue-600 bg-blue-50 glow-active"
                             : "border-slate-200 bg-white hover:bg-slate-50"
                         }`}
                       >
                         <img
                           src={getImageUrl(panel.image_path)}
                           alt={`Panel afectado ${index + 1}`}
-                          className="w-full rounded-lg object-contain bg-black max-h-44"
+                          className="w-full rounded-lg object-contain bg-black max-h-44 image-zoom"
                         />
 
                         <p className="font-bold text-sm mt-2">
@@ -516,8 +537,8 @@ function ReportView({ report }) {
                 )}
 
                 {allPoints.length > 0 ? (
-                  <div className="bg-red-100 text-red-700 rounded-xl p-4 flex gap-2">
-                    <AlertTriangle />
+                  <div className="bg-red-100 text-red-700 rounded-xl p-4 flex gap-2 interactive-soft">
+                    <AlertTriangle className="animate-pulse" />
                     <div>
                       <p>Se detectaron {hotpointsCount} hotpoints.</p>
                       <p>
@@ -527,7 +548,7 @@ function ReportView({ report }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-green-100 text-green-700 rounded-xl p-4 flex gap-2">
+                  <div className="bg-green-100 text-green-700 rounded-xl p-4 flex gap-2 interactive-soft">
                     <CheckCircle />
                     <span>No se detectaron hotpoints.</span>
                   </div>
@@ -538,71 +559,77 @@ function ReportView({ report }) {
             {selectedAffectedPanel && (
               <div
                 ref={selectedPanelRef}
-                className="border rounded-2xl p-5 bg-gray-50 scroll-mt-6"
+                onMouseMove={handleMouseGlow}
+                className="border rounded-2xl p-5 bg-gray-50 scroll-mt-6 interactive-card"
               >
                 <h3 className="text-xl font-bold text-gray-800 mb-4">
                   Reporte del panel seleccionado
                 </h3>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
+                  <div className="overflow-hidden rounded-xl">
                     {selectedImage && (
                       <img
                         src={selectedImage}
                         alt="Panel seleccionado"
-                        className="w-full rounded-xl border object-contain bg-black"
+                        className="w-full rounded-xl border object-contain bg-black image-zoom"
                       />
                     )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white rounded-xl p-4">
-                      <p className="text-sm text-gray-500">Tipo de Panel</p>
-                      <p className="font-bold text-gray-800">
-                        {data.panel?.marca} - {data.panel?.modelo}
-                      </p>
-                    </div>
+                    {[
+                      {
+                        title: "Tipo de Panel",
+                        value: `${data.panel?.marca} - ${data.panel?.modelo}`,
+                      },
+                      {
+                        title: "Tipo de detección",
+                        value: getPointTypeText(
+                          selectedAffectedPanel.classification
+                        ),
+                      },
+                      {
+                        title: "Temperatura del Hotpoint",
+                        value: `${selectedAffectedPanel.hotpoint_temperature} °C`,
+                        icon: Thermometer,
+                      },
+                      {
+                        title: "Vida útil estimada",
+                        value: `${
+                          selectedAffectedPanel.estimated_life
+                            ?.vida_util_estimada_anios || "N/A"
+                        } años`,
+                        icon: BatteryCharging,
+                      },
+                      {
+                        title: "Nivel de riesgo",
+                        value:
+                          selectedAffectedPanel.estimated_life?.nivel_riesgo ||
+                          "N/A",
+                      },
+                    ].map((item, index) => {
+                      const Icon = item.icon;
 
-                    <div className="bg-white rounded-xl p-4">
-                      <p className="text-sm text-gray-500">
-                        Tipo de detección
-                      </p>
-                      <p className="font-bold text-gray-800">
-                        {getPointTypeText(selectedAffectedPanel.classification)}
-                      </p>
-                    </div>
+                      return (
+                        <div
+                          key={index}
+                          onMouseMove={handleMouseGlow}
+                          className="bg-white rounded-xl p-4 interactive-card border border-slate-100"
+                        >
+                          <p className="text-sm text-gray-500">{item.title}</p>
+                          <p className="font-bold text-gray-800 flex items-center gap-1">
+                            {Icon && <Icon size={18} />}
+                            {item.value}
+                          </p>
+                        </div>
+                      );
+                    })}
 
-                    <div className="bg-white rounded-xl p-4">
-                      <p className="text-sm text-gray-500">
-                        Temperatura del Hotpoint
-                      </p>
-                      <p className="font-bold text-gray-800 flex items-center gap-1">
-                        <Thermometer size={18} />
-                        {selectedAffectedPanel.hotpoint_temperature} °C
-                      </p>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-4">
-                      <p className="text-sm text-gray-500">
-                        Vida útil estimada
-                      </p>
-                      <p className="font-bold text-gray-800 flex items-center gap-1">
-                        <BatteryCharging size={18} />
-                        {selectedAffectedPanel.estimated_life
-                          ?.vida_util_estimada_anios || "N/A"}{" "}
-                        años
-                      </p>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-4">
-                      <p className="text-sm text-gray-500">Nivel de riesgo</p>
-                      <p className="font-bold text-gray-800">
-                        {selectedAffectedPanel.estimated_life?.nivel_riesgo ||
-                          "N/A"}
-                      </p>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-4 md:col-span-2">
+                    <div
+                      onMouseMove={handleMouseGlow}
+                      className="bg-white rounded-xl p-4 md:col-span-2 interactive-card border border-slate-100"
+                    >
                       <p className="text-sm text-gray-500">
                         Pérdida de energía
                       </p>
@@ -632,7 +659,7 @@ function ReportView({ report }) {
         )}
 
         {activeTab === "hotpoints" && (
-          <div className="overflow-hidden rounded-xl border border-slate-200">
+          <div className="overflow-hidden rounded-xl border border-slate-200 interactive-soft">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-slate-600 text-left">
                 <tr>
@@ -690,182 +717,162 @@ function ReportView({ report }) {
         )}
 
         {activeTab === "red" && network && (
-          <div className="border rounded-2xl p-5 bg-blue-50">
+          <div className="border rounded-2xl p-5 bg-blue-50 interactive-soft">
             <h3 className="text-xl font-bold text-gray-800 mb-4">
               Reporte general de red
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white rounded-xl p-4">
-                <p className="text-sm text-gray-500">Estado del inversor</p>
-                <p className="font-bold text-gray-800">
-                  {network.estado_inversor}
-                </p>
-              </div>
-
-              <div className="bg-white rounded-xl p-4">
-                <p className="text-sm text-gray-500">Hotpoints totales</p>
-                <p className="font-bold text-gray-800">
-                  {network.total_hotpoints}
-                </p>
-              </div>
-
-              <div className="bg-white rounded-xl p-4">
-                <p className="text-sm text-gray-500">kW perdidos</p>
-                <p className="font-bold text-gray-800">
-                  {network.perdida_total_kw} kW
-                </p>
-              </div>
-
-              <div className="bg-white rounded-xl p-4">
-                <p className="text-sm text-gray-500">Precio kWh simulado</p>
-                <p className="font-bold text-gray-800">
-                  ${network.precio_kwh_cop} COP
-                </p>
-              </div>
+              {[
+                ["Estado del inversor", network.estado_inversor],
+                ["Hotpoints totales", network.total_hotpoints],
+                ["kW perdidos", `${network.perdida_total_kw} kW`],
+                ["Precio kWh simulado", `$${network.precio_kwh_cop} COP`],
+              ].map(([label, value], index) => (
+                <div
+                  key={index}
+                  onMouseMove={handleMouseGlow}
+                  className="bg-white rounded-xl p-4 interactive-card border border-slate-100"
+                >
+                  <p className="text-sm text-gray-500">{label}</p>
+                  <p className="font-bold text-gray-800">{value}</p>
+                </div>
+              ))}
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              <div className="bg-white rounded-xl p-4">
-                <h4 className="font-bold mb-1">
-                  Gráfica de eficacia de la red
-                </h4>
-                <p className="text-sm text-gray-500 mb-3">
-                  Muestra cómo disminuye el rendimiento durante los meses.
-                </p>
+              {[
+                {
+                  title: "Gráfica de eficacia de la red",
+                  desc: "Muestra cómo disminuye el rendimiento durante los meses.",
+                  type: "line",
+                  data: network.grafica_eficacia_red,
+                  dataKey: "efficiency",
+                  yLabel: "Eficacia de la red (%)",
+                  tooltip: "Eficacia",
+                  suffix: "%",
+                },
+                {
+                  title: "Gráfica de pérdida económica",
+                  desc: "Calcula el dinero perdido según los kWh no producidos.",
+                  type: "bar",
+                  data: network.grafica_perdida_economica,
+                  dataKey: "loss_cop",
+                  yLabel: "Pérdida económica (COP)",
+                  tooltip: "Pérdida económica",
+                  prefix: "$",
+                  suffix: " COP",
+                },
+                {
+                  title: "Gráfica de aumento de potencia",
+                  desc: "Simula el estrés eléctrico por aumento de temperatura.",
+                  type: "line",
+                  data: network.grafica_aumento_potencia,
+                  dataKey: "power_stress_w",
+                  yLabel: "Potencia estimada (W)",
+                  tooltip: "Potencia estimada",
+                  suffix: " W",
+                },
+              ].map((chart, index) => (
+                <div
+                  key={index}
+                  onMouseMove={handleMouseGlow}
+                  className="bg-white rounded-xl p-4 interactive-card border border-slate-100"
+                >
+                  <h4 className="font-bold mb-1">{chart.title}</h4>
+                  <p className="text-sm text-gray-500 mb-3">{chart.desc}</p>
 
-                <ResponsiveContainer width="100%" height={280}>
-                  <LineChart
-                    data={network.grafica_eficacia_red}
-                    margin={{ top: 20, right: 20, left: 10, bottom: 35 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time">
-                      <Label
-                        value="Tiempo de operación"
-                        offset={-20}
-                        position="insideBottom"
-                      />
-                    </XAxis>
-                    <YAxis domain={[0, 100]}>
-                      <Label
-                        value="Eficacia de la red (%)"
-                        angle={-90}
-                        position="insideLeft"
-                        style={{ textAnchor: "middle" }}
-                      />
-                    </YAxis>
-                    <Tooltip
-                      formatter={(value) => [`${value}%`, "Eficacia"]}
-                      labelFormatter={(label) => `Periodo: ${label}`}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="efficiency"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                      activeDot={{ r: 7 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="bg-white rounded-xl p-4">
-                <h4 className="font-bold mb-1">
-                  Gráfica de pérdida económica
-                </h4>
-                <p className="text-sm text-gray-500 mb-3">
-                  Calcula el dinero perdido según los kWh no producidos.
-                </p>
-
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart
-                    data={network.grafica_perdida_economica}
-                    margin={{ top: 20, right: 20, left: 20, bottom: 35 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time">
-                      <Label
-                        value="Tiempo de operación"
-                        offset={-20}
-                        position="insideBottom"
-                      />
-                    </XAxis>
-                    <YAxis>
-                      <Label
-                        value="Pérdida económica (COP)"
-                        angle={-90}
-                        position="insideLeft"
-                        style={{ textAnchor: "middle" }}
-                      />
-                    </YAxis>
-                    <Tooltip
-                      formatter={(value, name) => {
-                        if (name === "loss_cop") {
-                          return [`$${value} COP`, "Pérdida económica"];
-                        }
-                        return [value, name];
-                      }}
-                      labelFormatter={(label) => `Periodo: ${label}`}
-                    />
-                    <Bar dataKey="loss_cop" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="bg-white rounded-xl p-4">
-                <h4 className="font-bold mb-1">
-                  Gráfica de aumento de potencia
-                </h4>
-                <p className="text-sm text-gray-500 mb-3">
-                  Simula el estrés eléctrico por aumento de temperatura.
-                </p>
-
-                <ResponsiveContainer width="100%" height={280}>
-                  <LineChart
-                    data={network.grafica_aumento_potencia}
-                    margin={{ top: 20, right: 20, left: 10, bottom: 35 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time">
-                      <Label
-                        value="Tiempo de operación"
-                        offset={-20}
-                        position="insideBottom"
-                      />
-                    </XAxis>
-                    <YAxis>
-                      <Label
-                        value="Potencia estimada (W)"
-                        angle={-90}
-                        position="insideLeft"
-                        style={{ textAnchor: "middle" }}
-                      />
-                    </YAxis>
-                    <Tooltip
-                      formatter={(value) => [
-                        `${value} W`,
-                        "Potencia estimada",
-                      ]}
-                      labelFormatter={(label) => `Periodo: ${label}`}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="power_stress_w"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                      activeDot={{ r: 7 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+                  <ResponsiveContainer width="100%" height={280}>
+                    {chart.type === "bar" ? (
+                      <BarChart
+                        data={chart.data}
+                        margin={{
+                          top: 20,
+                          right: 20,
+                          left: 20,
+                          bottom: 35,
+                        }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="time">
+                          <Label
+                            value="Tiempo de operación"
+                            offset={-20}
+                            position="insideBottom"
+                          />
+                        </XAxis>
+                        <YAxis>
+                          <Label
+                            value={chart.yLabel}
+                            angle={-90}
+                            position="insideLeft"
+                            style={{ textAnchor: "middle" }}
+                          />
+                        </YAxis>
+                        <Tooltip
+                          formatter={(value) => [
+                            `${chart.prefix || ""}${value}${chart.suffix || ""}`,
+                            chart.tooltip,
+                          ]}
+                          labelFormatter={(label) => `Periodo: ${label}`}
+                        />
+                        <Bar dataKey={chart.dataKey} />
+                      </BarChart>
+                    ) : (
+                      <LineChart
+                        data={chart.data}
+                        margin={{
+                          top: 20,
+                          right: 20,
+                          left: 10,
+                          bottom: 35,
+                        }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="time">
+                          <Label
+                            value="Tiempo de operación"
+                            offset={-20}
+                            position="insideBottom"
+                          />
+                        </XAxis>
+                        <YAxis domain={chart.dataKey === "efficiency" ? [0, 100] : undefined}>
+                          <Label
+                            value={chart.yLabel}
+                            angle={-90}
+                            position="insideLeft"
+                            style={{ textAnchor: "middle" }}
+                          />
+                        </YAxis>
+                        <Tooltip
+                          formatter={(value) => [
+                            `${chart.prefix || ""}${value}${chart.suffix || ""}`,
+                            chart.tooltip,
+                          ]}
+                          labelFormatter={(label) => `Periodo: ${label}`}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey={chart.dataKey}
+                          strokeWidth={3}
+                          dot={{ r: 4 }}
+                          activeDot={{ r: 7 }}
+                        />
+                      </LineChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
         {activeTab === "recom" && (
           <div className="space-y-5">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-5">
+            <div
+              onMouseMove={handleMouseGlow}
+              className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-5 interactive-card"
+            >
               <div>
                 <h3 className="text-xl font-extrabold text-slate-800">
                   Recomendaciones de mantenimiento
@@ -898,7 +905,8 @@ function ReportView({ report }) {
                   return (
                     <div
                       key={index}
-                      className={`border rounded-2xl p-5 transition-all ${
+                      onMouseMove={handleMouseGlow}
+                      className={`border rounded-2xl p-5 interactive-card ${
                         esReparable
                           ? "border-slate-200 bg-white"
                           : "border-red-200 bg-red-50/20"

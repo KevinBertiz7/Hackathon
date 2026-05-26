@@ -1,23 +1,33 @@
 import { Clock, AlertTriangle } from "lucide-react";
 
+function handleMouseGlow(e) {
+  const card = e.currentTarget;
+  const rect = card.getBoundingClientRect();
+
+  card.style.setProperty("--x", `${e.clientX - rect.left}px`);
+  card.style.setProperty("--y", `${e.clientY - rect.top}px`);
+}
+
 function HistoryPanel({ history, onSelectHistory }) {
   return (
-    <div className="bg-white rounded-2xl shadow-md p-6">
+    <div
+      onMouseMove={handleMouseGlow}
+      className="bg-white rounded-2xl shadow-md p-6 border border-slate-200 interactive-card"
+    >
       <h2 className="text-2xl font-bold text-gray-800 mb-4">
         Historial de análisis
       </h2>
 
       {history.length === 0 ? (
-        <p className="text-gray-500">
-          Todavía no hay análisis guardados.
-        </p>
+        <p className="text-gray-500">Todavía no hay análisis guardados.</p>
       ) : (
-        <div className="space-y-3 max-h-[500px] overflow-y-auto">
+        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
           {history.map((item) => (
             <button
               key={item.id}
               onClick={() => onSelectHistory(item.id)}
-              className="w-full text-left border rounded-xl p-4 hover:bg-green-50 transition"
+              onMouseMove={handleMouseGlow}
+              className="w-full text-left border rounded-xl p-4 interactive-card hover:bg-green-50 transition"
             >
               <div className="flex items-center justify-between">
                 <p className="font-bold text-gray-800">
@@ -25,7 +35,7 @@ function HistoryPanel({ history, onSelectHistory }) {
                 </p>
 
                 {item.hotpoint_detected && (
-                  <AlertTriangle className="text-red-500" size={20} />
+                  <AlertTriangle className="text-red-500 animate-pulse" size={20} />
                 )}
               </div>
 
@@ -34,7 +44,11 @@ function HistoryPanel({ history, onSelectHistory }) {
               </p>
 
               <p className="text-sm text-gray-600">
-                Hotpoints: {item.possible_hotpoints?.length || 0}
+                Hotpoints:{" "}
+                {item.hotpoints_count ??
+                  item.hotpoints?.length ??
+                  item.possible_hotpoints?.length ??
+                  0}
               </p>
 
               <p className="text-sm text-gray-600">
